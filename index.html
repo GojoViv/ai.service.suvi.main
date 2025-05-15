@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voice Assistant</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background-color: #f0f0f0;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>SUVI Voice Assistant</h1>
+    <button id="speakButton" onclick="startRecognition()">Speak</button>
+    <p id="status">Press the button and speak...</p>
+
+    <script>
+      const speakButton = document.getElementById("speakButton");
+      const status = document.getElementById("status");
+
+      const recognition = new (window.SpeechRecognition ||
+        window.webkitSpeechRecognition)();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        status.textContent = "Listening...";
+        speakButton.disabled = true;
+      };
+
+      recognition.onresult = (event) => {
+        const speechResult = event.results[0][0].transcript;
+        status.textContent = `You said: ${speechResult}`;
+        talkToSuvi(speechResult);
+      };
+
+      recognition.onerror = (event) => {
+        status.textContent = "Error occurred in recognition: " + event.error;
+        speakButton.disabled = false;
+      };
+
+      recognition.onend = () => {
+        if (status.textContent !== "Thinking...") {
+          speakButton.disabled = false;
+        }
+      };
+
+      function startRecognition() {
+        status.textContent = "Thinking...";
+        recognition.start();
+      }
+
+      async function talkToSuvi(message) {
+        const threadId = localStorage.getItem("threadId") || "";
+        try {
+          const response = await fetch(
+            `http://localhost:8080/v1/api/assistant/talk/${threadId}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ message }),
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+
+          const data = await response.json();
+          if (data.threadId) {
+            localStorage.setItem("threadId", data.threadId);
+          }
+
+          const suviResponse = data.assistantResponse[0];
+          respond(suviResponse);
+        } catch (error) {
+          console.error("There was a problem with the fetch operation:", error);
+          status.textContent = "Error occurred while communicating with SUVI.";
+          speakButton.disabled = false;
+        }
+      }
+
+      function respond(response) {
+        const synth = window.speechSynthesis;
+        const utterance = new SpeechSynthesisUtterance(response);
+        utterance.onend = () => {
+          status.textContent = "Press the button and speak...";
+          speakButton.disabled = false;
+        };
+        synth.speak(utterance);
+      }
+    </script>
+  </body>
+</html>

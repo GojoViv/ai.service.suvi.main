@@ -1,0 +1,5 @@
+export enum Boards {
+  TASKS = "[TASKS_BOARD_ID]",
+  SPRINTS = "[SPRINTS_BOARD_ID]",
+  PROJECTS = "[PROJECTS_BOARD_ID]",
+}
