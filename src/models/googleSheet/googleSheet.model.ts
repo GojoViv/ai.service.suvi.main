@@ -1,4 +1,4 @@
-import { sheets } from "../../clients/google.client";
+import { sheets, drive } from "../../clients/google.client";
 import logger from "../../utils/logger";
 import { ExternalServiceError } from "../../utils/errors";
 
@@ -59,6 +59,15 @@ const createNewSpreadsheet = async (config: any) => {
       );
     }
 
+    // Make the spreadsheet publicly accessible
+    await drive.permissions.create({
+      fileId: spreadsheetId,
+      requestBody: {
+        role: "reader",
+        type: "anyone",
+      },
+    });
+
     for (const sheet of config.sheetsToCreate) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: spreadsheetId,
@@ -71,7 +80,7 @@ const createNewSpreadsheet = async (config: any) => {
     }
 
     logger.info({
-      message: "Spreadsheet created",
+      message: "Spreadsheet created and made public",
       spreadsheetId,
       spreadsheetUrl: createResponse.data.spreadsheetUrl,
     });

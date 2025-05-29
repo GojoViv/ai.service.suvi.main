@@ -6,6 +6,7 @@ import { config } from "dotenv";
 import { errorHandler, notFoundHandler, asyncHandler } from "./utils/errors";
 import { requestLogger, stream } from "./utils/logger";
 import logger from "./utils/logger";
+import router from "./routes";
 
 import { MONGODB_URI } from "./config/environment";
 
@@ -27,14 +28,33 @@ const startApp = async () => {
 
     const app = express();
 
-    // Middleware
+    // Trust proxy for rate limiting behind reverse proxies
+    app.set("trust proxy", 1);
+
+    // Default CORS for protected routes
     app.use(cors());
+
+    // Public CORS for sheet creation endpoint
+    app.use(
+      "/v1/api/sheet/create",
+      cors({
+        origin: true,
+        methods: ["POST", "OPTIONS"],
+        allowedHeaders: ["Content-Type"],
+        credentials: true,
+      })
+    );
+
+    // Middleware
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
     // Request logging
     app.use(morgan("combined", { stream }));
     app.use(requestLogger);
+
+    // Mount API routes
+    app.use("/v1/api", router);
 
     // 404 handler
     app.use(notFoundHandler);
